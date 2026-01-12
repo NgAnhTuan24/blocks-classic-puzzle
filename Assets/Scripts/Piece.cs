@@ -79,11 +79,14 @@ public class Piece : MonoBehaviour
     {
         this.stepTime = Time.time + this.stepDelay;
 
-        Move(Vector2Int.down);
+        bool moved = Move(Vector2Int.down);
 
-        if (this.lockTime >= this.lockDelay)
+        if (!moved)
         {
-            Lock();
+            if (this.lockTime >= this.lockDelay)
+            {
+                Lock();
+            }
         }
     }
 
@@ -115,7 +118,11 @@ public class Piece : MonoBehaviour
         if (valid)
         {
             this.position = newPosition;
-            this.lockTime = 0f;
+
+            if (translation == Vector2Int.down)
+            {
+                this.lockTime = 0f;
+            }
         }
 
         return valid;

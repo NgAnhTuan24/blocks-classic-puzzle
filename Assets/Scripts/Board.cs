@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -8,6 +9,13 @@ public class Board : MonoBehaviour
     public TetrominoData[] tetrominoes;
     public Vector3Int spawnPosition;
     public Vector2Int boardSize = new Vector2Int(10, 20);
+
+    public Tile flashTile;
+    public float flashDelay = 0.05f;
+    public int flashCount = 3;
+
+    private bool isClearingLines;
+    private bool isProcessingLines = false;
 
     public RectInt Bounds
     {
@@ -23,7 +31,7 @@ public class Board : MonoBehaviour
         this.tilemap = GetComponentInChildren<Tilemap>();
         this.activePiece = GetComponentInChildren<Piece>();
 
-        for (int i = 0; i < this.tetrominoes.Length; i++) 
+        for (int i = 0; i < this.tetrominoes.Length; i++)
         {
             this.tetrominoes[i].Initialize();
         }
@@ -31,11 +39,15 @@ public class Board : MonoBehaviour
 
     private void Start()
     {
-        SpawnPiece();    
+        SpawnPiece();
     }
+
+    #region Piece Control
 
     public void SpawnPiece()
     {
+        if (isProcessingLines) return;
+
         int random = Random.Range(0, this.tetrominoes.Length);
         TetrominoData data = this.tetrominoes[random];
 
@@ -53,7 +65,7 @@ public class Board : MonoBehaviour
 
     private void GameOver()
     {
-        this.tilemap.ClearAllTiles();
+        //this.tilemap.ClearAllTiles();
     }
 
     public void Set(Piece piece)
@@ -76,7 +88,7 @@ public class Board : MonoBehaviour
 
     public bool IsValidPosition(Piece piece, Vector3Int position)
     {
-        RectInt bounds = this.Bounds; 
+        RectInt bounds = this.Bounds;
 
         for (int i = 0; i < piece.cells.Length; i++)
         {
@@ -96,21 +108,45 @@ public class Board : MonoBehaviour
         return true;
     }
 
+    #endregion
+
+    #region Line Clear Logic
+
     public void ClearLines()
     {
-        RectInt bounds = this.Bounds;
-        int row = bounds.yMin;
+        if (isClearingLines || isProcessingLines) return;
 
-        while (row < bounds.yMax)
+        StartCoroutine(ClearLinesRoutine());
+    }
+
+    private IEnumerator ClearLinesRoutine()
+    {
+        isClearingLines = true;
+        isProcessingLines = true;
+
+        RectInt bounds = this.Bounds;
+        bool clearedAnyLine = false;
+
+        for (int row = bounds.yMin; row < bounds.yMax;)
         {
-            if(IsLineFull(row))
+            if (IsLineFull(row))
             {
+                clearedAnyLine = true;
+                yield return StartCoroutine(FlashLine(row));
                 LineClear(row);
             }
             else
             {
                 row++;
             }
+        }
+
+        isProcessingLines = false;
+        isClearingLines = false;
+
+        if (clearedAnyLine)
+        {
+            SpawnPiece();
         }
     }
 
@@ -120,9 +156,7 @@ public class Board : MonoBehaviour
 
         for (int col = bounds.xMin; col < bounds.xMax; col++)
         {
-            Vector3Int position = new Vector3Int(col, row, 0);
-
-            if (!this.tilemap.HasTile(position))
+            if (!this.tilemap.HasTile(new Vector3Int(col, row, 0)))
             {
                 return false;
             }
@@ -131,28 +165,61 @@ public class Board : MonoBehaviour
         return true;
     }
 
+    private IEnumerator FlashLine(int row)
+    {
+        RectInt bounds = this.Bounds;
+
+        for (int i = 0; i < flashCount; i++)
+        {
+            // Flash ON
+            for (int col = bounds.xMin; col < bounds.xMax; col++)
+            {
+                tilemap.SetTile(new Vector3Int(col, row, 0), flashTile);
+            }
+
+            yield return new WaitForSeconds(flashDelay);
+
+            // Flash OFF
+            for (int col = bounds.xMin; col < bounds.xMax; col++)
+            {
+                tilemap.SetTile(new Vector3Int(col, row, 0), null);
+            }
+
+            yield return new WaitForSeconds(flashDelay);
+        }
+    }
+
     private void LineClear(int row)
     {
         RectInt bounds = this.Bounds;
 
+        // Xóa dòng full
         for (int col = bounds.xMin; col < bounds.xMax; col++)
         {
-            Vector3Int position = new Vector3Int(col, row, 0);
-            this.tilemap.SetTile(position, null);
+            tilemap.SetTile(new Vector3Int(col, row, 0), null);
         }
 
-        while (row < bounds.yMax)
+        // Kéo các dòng phía trên xuống (DUYỆT TỪ DƯỚI LÊN)
+        for (int y = row + 1; y < bounds.yMax; y++)
         {
             for (int col = bounds.xMin; col < bounds.xMax; col++)
             {
-                Vector3Int position = new Vector3Int(col, row + 1, 0);
-                TileBase above = this.tilemap.GetTile(position);
+                Vector3Int from = new Vector3Int(col, y, 0);
+                Vector3Int to = new Vector3Int(col, y - 1, 0);
 
-                position = new Vector3Int(col, row, 0);
-                this.tilemap.SetTile(position, above);
+                TileBase tile = tilemap.GetTile(from);
+                tilemap.SetTile(to, tile);
             }
+        }
 
-            row++;
+        // Dòng trên cùng phải clear
+        int topRow = bounds.yMax - 1;
+        for (int col = bounds.xMin; col < bounds.xMax; col++)
+        {
+            tilemap.SetTile(new Vector3Int(col, topRow, 0), null);
         }
     }
+
+
+    #endregion
 }

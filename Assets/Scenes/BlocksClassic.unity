@@ -675,6 +675,9 @@ MonoBehaviour:
     tile: {fileID: 11400000, guid: 1bb8adf3efcfb3445bafaafec58c0aab, type: 2}
   spawnPosition: {x: -1, y: 8, z: 0}
   boardSize: {x: 10, y: 20}
+  flashTile: {fileID: 11400000, guid: debdad74e45908540a5446da6de4788e, type: 2}
+  flashDelay: 0.05
+  flashCount: 3
 --- !u!114 &1724628897
 MonoBehaviour:
   m_ObjectHideFlags: 0
