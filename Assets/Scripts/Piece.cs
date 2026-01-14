@@ -13,6 +13,10 @@ public class Piece : MonoBehaviour
     private float stepTime;
     private float lockTime;
 
+    private float moveDelay = 0.15f;
+    private float moveRepeatRate = 0.05f;
+    private float nextMoveTime = 0f;
+
     public void Initialize(Board board, Vector3Int position, TetrominoData data)
     {
         this.board = board;
@@ -48,14 +52,7 @@ public class Piece : MonoBehaviour
             Rotate(1);
         }
 
-        if (Input.GetKeyDown(KeyCode.A))
-        {
-            Move(Vector2Int.left);
-        }
-        else if (Input.GetKeyDown(KeyCode.D))
-        {
-            Move(Vector2Int.right);
-        }
+        HandleHorizontalMovement();
 
         if (Input.GetKeyDown(KeyCode.S))
         {
@@ -73,6 +70,36 @@ public class Piece : MonoBehaviour
         }
 
         this.board.Set(this);
+    }
+
+    private void HandleHorizontalMovement()
+    {
+        bool leftPressed = Input.GetKey(KeyCode.A);
+        bool rightPressed = Input.GetKey(KeyCode.D);
+
+        if (!leftPressed && !rightPressed)
+        {
+            nextMoveTime = 0f;
+            return;
+        }
+
+        if (leftPressed && rightPressed) return;
+
+        Vector2Int direction = leftPressed ? Vector2Int.left : Vector2Int.right;
+
+        if (Time.time >= nextMoveTime)
+        {
+            bool moved = Move(direction);
+            if (moved)
+            {
+                this.lockTime = 0f;
+
+                if (nextMoveTime == 0f)
+                    nextMoveTime = Time.time + moveDelay;
+                else
+                    nextMoveTime = Time.time + moveRepeatRate;
+            }
+        }
     }
 
     private void Step()
