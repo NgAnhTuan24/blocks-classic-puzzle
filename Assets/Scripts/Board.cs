@@ -13,7 +13,9 @@ public class Board : MonoBehaviour
     public Tile flashTile;
     public float flashDelay = 0.05f;
     public int flashCount = 3;
+    public NextPreviewPrefab nextPreviewPrefab;
 
+    private TetrominoData nextTetromino;
     private bool isClearingLines;
     private bool isProcessingLines = false;
 
@@ -39,23 +41,30 @@ public class Board : MonoBehaviour
 
     private void Start()
     {
+        GenerateNext();
         SpawnPiece();
     }
 
-    #region Piece Control
+    private void GenerateNext()
+    {
+        int random = Random.Range(0, tetrominoes.Length);
+        nextTetromino = tetrominoes[random];
+
+        nextPreviewPrefab.SetNext(nextTetromino);
+    }
 
     public void SpawnPiece()
     {
         if (isProcessingLines) return;
 
-        int random = Random.Range(0, this.tetrominoes.Length);
-        TetrominoData data = this.tetrominoes[random];
+        TetrominoData data = nextTetromino;
 
         this.activePiece.Initialize(this, this.spawnPosition, data);
 
         if (IsValidPosition(this.activePiece, this.spawnPosition))
         {
             Set(this.activePiece);
+            GenerateNext();
         }
         else
         {
@@ -65,8 +74,21 @@ public class Board : MonoBehaviour
 
     private void GameOver()
     {
-        //this.tilemap.ClearAllTiles();
+        StopAllCoroutines();
+
+        this.tilemap.ClearAllTiles();
+
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.ResetAll();
+        }
+
+        activePiece.ResetState();
+
+        GenerateNext();
+        SpawnPiece();
     }
+
 
     public void Set(Piece piece)
     {
@@ -108,14 +130,9 @@ public class Board : MonoBehaviour
         return true;
     }
 
-    #endregion
-
-    #region Line Clear Logic
-
     public void ClearLines()
     {
         if (isClearingLines || isProcessingLines) return;
-
         StartCoroutine(ClearLinesRoutine());
     }
 
@@ -125,15 +142,15 @@ public class Board : MonoBehaviour
         isProcessingLines = true;
 
         RectInt bounds = this.Bounds;
-        bool clearedAnyLine = false;
+        int linesCleared = 0;
 
         for (int row = bounds.yMin; row < bounds.yMax;)
         {
             if (IsLineFull(row))
             {
-                clearedAnyLine = true;
                 yield return StartCoroutine(FlashLine(row));
                 LineClear(row);
+                linesCleared++;
             }
             else
             {
@@ -141,13 +158,15 @@ public class Board : MonoBehaviour
             }
         }
 
+        if (linesCleared > 0 && ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.OnLinesCleared(linesCleared);
+        }
+
         isProcessingLines = false;
         isClearingLines = false;
 
-        if (clearedAnyLine)
-        {
-            SpawnPiece();
-        }
+        SpawnPiece();
     }
 
     private bool IsLineFull(int row)
@@ -171,7 +190,6 @@ public class Board : MonoBehaviour
 
         for (int i = 0; i < flashCount; i++)
         {
-            // Flash ON
             for (int col = bounds.xMin; col < bounds.xMax; col++)
             {
                 tilemap.SetTile(new Vector3Int(col, row, 0), flashTile);
@@ -179,7 +197,6 @@ public class Board : MonoBehaviour
 
             yield return new WaitForSeconds(flashDelay);
 
-            // Flash OFF
             for (int col = bounds.xMin; col < bounds.xMax; col++)
             {
                 tilemap.SetTile(new Vector3Int(col, row, 0), null);
@@ -193,13 +210,11 @@ public class Board : MonoBehaviour
     {
         RectInt bounds = this.Bounds;
 
-        // Xóa dòng full
         for (int col = bounds.xMin; col < bounds.xMax; col++)
         {
             tilemap.SetTile(new Vector3Int(col, row, 0), null);
         }
 
-        // Kéo các dòng phía trên xuống (DUYỆT TỪ DƯỚI LÊN)
         for (int y = row + 1; y < bounds.yMax; y++)
         {
             for (int col = bounds.xMin; col < bounds.xMax; col++)
@@ -212,14 +227,10 @@ public class Board : MonoBehaviour
             }
         }
 
-        // Dòng trên cùng phải clear
         int topRow = bounds.yMax - 1;
         for (int col = bounds.xMin; col < bounds.xMax; col++)
         {
             tilemap.SetTile(new Vector3Int(col, topRow, 0), null);
         }
     }
-
-
-    #endregion
 }

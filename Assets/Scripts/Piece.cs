@@ -13,6 +13,10 @@ public class Piece : MonoBehaviour
     private float stepTime;
     private float lockTime;
 
+    private float moveDelay = 0.15f;
+    private float moveRepeatRate = 0.05f;
+    private float nextMoveTime = 0f;
+
     public void Initialize(Board board, Vector3Int position, TetrominoData data)
     {
         this.board = board;
@@ -21,6 +25,7 @@ public class Piece : MonoBehaviour
         this.rotationIndex = 0;
         this.stepTime = Time.time + stepDelay;
         this.lockTime = 0f;
+        this.stepDelay = ScoreManager.Instance != null ? ScoreManager.Instance.GetFallSpeed() : stepDelay;
 
         if (this.cells == null)
         {
@@ -48,14 +53,7 @@ public class Piece : MonoBehaviour
             Rotate(1);
         }
 
-        if (Input.GetKeyDown(KeyCode.A))
-        {
-            Move(Vector2Int.left);
-        }
-        else if (Input.GetKeyDown(KeyCode.D))
-        {
-            Move(Vector2Int.right);
-        }
+        HandleHorizontalMovement();
 
         if (Input.GetKeyDown(KeyCode.S))
         {
@@ -75,6 +73,36 @@ public class Piece : MonoBehaviour
         this.board.Set(this);
     }
 
+    private void HandleHorizontalMovement()
+    {
+        bool leftPressed = Input.GetKey(KeyCode.A);
+        bool rightPressed = Input.GetKey(KeyCode.D);
+
+        if (!leftPressed && !rightPressed)
+        {
+            nextMoveTime = 0f;
+            return;
+        }
+
+        if (leftPressed && rightPressed) return;
+
+        Vector2Int direction = leftPressed ? Vector2Int.left : Vector2Int.right;
+
+        if (Time.time >= nextMoveTime)
+        {
+            bool moved = Move(direction);
+            if (moved)
+            {
+                //this.lockTime = 0f;
+
+                if (nextMoveTime == 0f)
+                    nextMoveTime = Time.time + moveDelay;
+                else
+                    nextMoveTime = Time.time + moveRepeatRate;
+            }
+        }
+    }
+
     private void Step()
     {
         this.stepTime = Time.time + this.stepDelay;
@@ -92,9 +120,15 @@ public class Piece : MonoBehaviour
 
     private void HardDrop()
     {
+        int dropDistance = 0;
         while (Move(Vector2Int.down))
         {
-            continue;
+            dropDistance++;
+        }
+
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.AddScore(dropDistance * 2);
         }
 
         Lock();
@@ -104,7 +138,7 @@ public class Piece : MonoBehaviour
     {
         this.board.Set(this);
         this.board.ClearLines();
-        this.board.SpawnPiece();
+        //this.board.SpawnPiece();
     }
 
     private bool Move(Vector2Int translation)
@@ -126,6 +160,14 @@ public class Piece : MonoBehaviour
         }
 
         return valid;
+    }
+    
+    public void ResetState()
+    {
+        stepDelay = 1f;
+        stepTime = 0f;
+        lockTime = 0f;
+        rotationIndex = 0;
     }
 
     private void Rotate(int direction)
