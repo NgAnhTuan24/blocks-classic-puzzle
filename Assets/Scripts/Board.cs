@@ -74,8 +74,21 @@ public class Board : MonoBehaviour
 
     private void GameOver()
     {
+        StopAllCoroutines();
+
         this.tilemap.ClearAllTiles();
+
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.ResetAll();
+        }
+
+        activePiece.ResetState();
+
+        GenerateNext();
+        SpawnPiece();
     }
+
 
     public void Set(Piece piece)
     {
@@ -120,7 +133,6 @@ public class Board : MonoBehaviour
     public void ClearLines()
     {
         if (isClearingLines || isProcessingLines) return;
-
         StartCoroutine(ClearLinesRoutine());
     }
 
@@ -130,15 +142,15 @@ public class Board : MonoBehaviour
         isProcessingLines = true;
 
         RectInt bounds = this.Bounds;
-        bool clearedAnyLine = false;
+        int linesCleared = 0;
 
         for (int row = bounds.yMin; row < bounds.yMax;)
         {
             if (IsLineFull(row))
             {
-                clearedAnyLine = true;
                 yield return StartCoroutine(FlashLine(row));
                 LineClear(row);
+                linesCleared++;
             }
             else
             {
@@ -146,13 +158,15 @@ public class Board : MonoBehaviour
             }
         }
 
+        if (linesCleared > 0 && ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.OnLinesCleared(linesCleared);
+        }
+
         isProcessingLines = false;
         isClearingLines = false;
 
-        if (clearedAnyLine)
-        {
-            SpawnPiece();
-        }
+        SpawnPiece();
     }
 
     private bool IsLineFull(int row)

@@ -25,6 +25,7 @@ public class Piece : MonoBehaviour
         this.rotationIndex = 0;
         this.stepTime = Time.time + stepDelay;
         this.lockTime = 0f;
+        this.stepDelay = ScoreManager.Instance != null ? ScoreManager.Instance.GetFallSpeed() : stepDelay;
 
         if (this.cells == null)
         {
@@ -92,7 +93,7 @@ public class Piece : MonoBehaviour
             bool moved = Move(direction);
             if (moved)
             {
-                this.lockTime = 0f;
+                //this.lockTime = 0f;
 
                 if (nextMoveTime == 0f)
                     nextMoveTime = Time.time + moveDelay;
@@ -119,9 +120,15 @@ public class Piece : MonoBehaviour
 
     private void HardDrop()
     {
+        int dropDistance = 0;
         while (Move(Vector2Int.down))
         {
-            continue;
+            dropDistance++;
+        }
+
+        if (ScoreManager.Instance != null)
+        {
+            ScoreManager.Instance.AddScore(dropDistance * 2);
         }
 
         Lock();
@@ -131,7 +138,7 @@ public class Piece : MonoBehaviour
     {
         this.board.Set(this);
         this.board.ClearLines();
-        this.board.SpawnPiece();
+        //this.board.SpawnPiece();
     }
 
     private bool Move(Vector2Int translation)
@@ -153,6 +160,14 @@ public class Piece : MonoBehaviour
         }
 
         return valid;
+    }
+    
+    public void ResetState()
+    {
+        stepDelay = 1f;
+        stepTime = 0f;
+        lockTime = 0f;
+        rotationIndex = 0;
     }
 
     private void Rotate(int direction)
