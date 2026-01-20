@@ -40,6 +40,8 @@ public class Piece : MonoBehaviour
 
     private void Update()
     {
+        if (PauseManager.Instance != null && PauseManager.Instance.IsPaused) return;
+
         this.board.Clear(this);
 
         this.lockTime += Time.deltaTime;
