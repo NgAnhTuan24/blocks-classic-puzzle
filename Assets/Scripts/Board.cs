@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Tilemaps;
 
@@ -142,32 +143,40 @@ public class Board : MonoBehaviour
         isProcessingLines = true;
 
         RectInt bounds = this.Bounds;
-        int linesCleared = 0;
+        List<int> fullRows = new List<int>();
 
-        for (int row = bounds.yMin; row < bounds.yMax;)
+        for (int row = bounds.yMin; row < bounds.yMax; row++)
         {
             if (IsLineFull(row))
             {
-                yield return StartCoroutine(FlashLine(row));
-                LineClear(row);
-                linesCleared++;
-            }
-            else
-            {
-                row++;
+                fullRows.Add(row);
             }
         }
 
-        if (linesCleared > 0 && ScoreManager.Instance != null)
+        if (fullRows.Count == 0)
         {
-            ScoreManager.Instance.OnLinesCleared(linesCleared);
+            isProcessingLines = false;
+            isClearingLines = false;
+            SpawnPiece();
+            yield break;
         }
+
+        yield return StartCoroutine(FlashLines(fullRows));
+
+        for (int i = 0; i < fullRows.Count; i++)
+        {
+            LineClear(fullRows[i] - i);
+        }
+
+        SoundManager.Instance?.PlayLineClear();
+        ScoreManager.Instance?.OnLinesCleared(fullRows.Count);
 
         isProcessingLines = false;
         isClearingLines = false;
 
         SpawnPiece();
     }
+
 
     private bool IsLineFull(int row)
     {
@@ -184,27 +193,42 @@ public class Board : MonoBehaviour
         return true;
     }
 
-    private IEnumerator FlashLine(int row)
+    private IEnumerator FlashLines(List<int> rows)
     {
         RectInt bounds = this.Bounds;
 
-        for (int i = 0; i < flashCount; i++)
+        Dictionary<Vector3Int, TileBase> originalTiles = new Dictionary<Vector3Int, TileBase>();
+
+        foreach (int row in rows)
         {
             for (int col = bounds.xMin; col < bounds.xMax; col++)
             {
-                tilemap.SetTile(new Vector3Int(col, row, 0), flashTile);
+                Vector3Int pos = new Vector3Int(col, row, 0);
+                originalTiles[pos] = tilemap.GetTile(pos);
+            }
+        }
+
+        for (int i = 0; i < flashCount; i++)
+        {
+            foreach (int row in rows)
+            {
+                for (int col = bounds.xMin; col < bounds.xMax; col++)
+                {
+                    tilemap.SetTile(new Vector3Int(col, row, 0), flashTile);
+                }
             }
 
             yield return new WaitForSeconds(flashDelay);
 
-            for (int col = bounds.xMin; col < bounds.xMax; col++)
+            foreach (var kv in originalTiles)
             {
-                tilemap.SetTile(new Vector3Int(col, row, 0), null);
+                tilemap.SetTile(kv.Key, kv.Value);
             }
 
             yield return new WaitForSeconds(flashDelay);
         }
     }
+
 
     private void LineClear(int row)
     {

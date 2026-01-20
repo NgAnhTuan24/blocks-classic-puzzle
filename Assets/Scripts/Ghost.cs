@@ -19,6 +19,8 @@ public class Ghost : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (PauseManager.Instance != null && PauseManager.Instance.IsPaused) return;
+
         Clear();
         Copy();
         Drop();
