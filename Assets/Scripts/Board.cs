@@ -160,6 +160,7 @@ public class Board : MonoBehaviour
 
         if (linesCleared > 0 && ScoreManager.Instance != null)
         {
+            SoundManager.Instance?.PlayLineClear();
             ScoreManager.Instance.OnLinesCleared(linesCleared);
         }
 

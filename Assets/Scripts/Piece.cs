@@ -49,17 +49,22 @@ public class Piece : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Q))
         {
             Rotate(-1);
+            SoundManager.Instance?.PlayRotate();
         }
         else if (Input.GetKeyDown(KeyCode.E))
         {
             Rotate(1);
+            SoundManager.Instance?.PlayRotate();
         }
 
         HandleHorizontalMovement();
 
         if (Input.GetKeyDown(KeyCode.S))
         {
-            Move(Vector2Int.down);
+            if (Move(Vector2Int.down))
+            {
+                SoundManager.Instance?.PlaySoftDrop();
+            }
         }
 
         if (Input.GetKeyDown(KeyCode.Space))
@@ -96,6 +101,7 @@ public class Piece : MonoBehaviour
             if (moved)
             {
                 //this.lockTime = 0f;
+                SoundManager.Instance?.PlayMove();
 
                 if (nextMoveTime == 0f)
                     nextMoveTime = Time.time + moveDelay;
@@ -127,6 +133,8 @@ public class Piece : MonoBehaviour
         {
             dropDistance++;
         }
+
+        SoundManager.Instance?.PlayHardDrop();
 
         if (ScoreManager.Instance != null)
         {
